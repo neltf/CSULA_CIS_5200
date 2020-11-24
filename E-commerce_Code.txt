@@ -1,0 +1,315 @@
+--CSULA CIS5200 Term Project Code - Group Three
+--E-commerce User Behaviours Analysis
+
+-------------------------------------------------------------
+
+--Step 1: Connect to Oracle Cloud: Big Data Compute
+
+ssh fchen26@ipadddress
+
+ls -al
+ 
+hdfs dfs –ls
+
+--Step 2: Download Data from Amazon S3 and Load it into Oracle Big Data 
+
+wget -O 2019-Oct.csv.zip https://groupthreebucket.s3-us-west-1.amazonaws.com/2019-Oct.csv.zip
+
+--Move the data file into the data folder
+
+mv 2019-Oct.csv.zip /data/
+cd /data/
+
+--Unzip and save file to HDFS
+
+unzip 2019-Oct.csv.zip
+
+--Create a directory named ecommerce
+
+hdfs dfs -mkdir ecommerce
+hdfs dfs -ls
+
+--Put 2019-Oct.csv file from home directory to ecommerce directory
+
+hdfs dfs -put 2019-Oct.csv /user/fchen26/ecommerce/
+hdfs dfs -ls ecommerce
+
+--Get the first and last 10 lines of the data file
+
+hdfs dfs -cat ecommerce/2019-Oct.csv | head -n 10
+hdfs dfs -cat ecommerce/2019-Oct.csv | tail -n 10
+
+--Run the following HDFS command to make your beeline command works
+
+hdfs dfs -chmod -R o+w .
+
+--Step 3: Creating Hive Tables to Query Data
+
+--New terminal – connecting to HIVE:
+
+beeline
+!connect jdbc:hive2://bigdai-nov-bdcsce-1:2181,bigdai-nov-bdcsce-2:2181,bigdai-nov-bdcsce-3:2181/;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2?tez.queue.name=interactive  bdcsce_admin 
+
+--Create and use a new database
+
+CREATE DATABASE if not exists groupthree;
+
+show databases;
+
+use groupthree;
+
+--Create table to store data from previously unzipped file
+ 
+DROP TABLE IF EXISTS ecommerce;
+
+CREATE EXTERNAL TABLE IF NOT EXISTS ecommerce (
+event_time STRING,
+event_type STRING,
+product_id INT,
+category_id BIGINT,
+category_code STRING,
+brand STRING,
+price FLOAT,
+user_id INT,
+user_session STRING
+)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ','
+LOCATION '/user/fchen26/ecommerce'
+TBLPROPERTIES ('skip.header.line.count'='1');
+
+--Check to see if the table is created
+
+show tables;
+
+--Review the content of the ecommerce table to see if it has the correct data and values
+
+SELECT * FROM ecommerce limit 10;
+
+--Review table headers
+
+DESCRIBE ecommerce;
+
+--Create a view to store data from previously created table with conditions
+ 
+DROP VIEW IF EXISTS ecommerce_view;
+
+CREATE VIEW IF NOT EXISTS ecommerce_view AS 
+SELECT 
+event_time,
+day(event_time) as day,
+hour(event_time) as hour,
+unix_timestamp(event_time) as event_time_in_seconds,
+event_type,
+product_id,
+category_id,
+split(category_code, '\\.')[0] as primary_category,
+brand,
+price,
+user_id,
+user_session
+FROM ecommerce
+WHERE category_code!='' AND brand!=''; 
+
+--Review the content of the ecommerce_view view to see if it has the correct data and values
+
+SELECT * FROM ecommerce_view limit 10;
+
+--Review event types
+ 
+SELECT event_type FROM ecommerce_view GROUP BY event_type;
+
+--Review view headers
+
+DESCRIBE ecommerce_view;
+
+-------------------------------------------------------------
+
+--Analysis 1:
+
+--Step1: Creating a table and running a query to get the sales revenue by day
+
+SELECT day, ROUND(SUM(price), 2) AS sales_revenue FROM ecommerce_view where event_type='purchase' GROUP BY day ORDER BY day ASC;
+
+--Create a table using the above query and store the results in hdfs for visualization
+
+DROP TABLE IF EXISTS sales_revenue_by_day;
+
+CREATE TABLE sales_revenue_by_day
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE LOCATION '/user/fchen26/ecommerce/one'
+AS
+select day, ROUND(SUM(price), 2) AS sales_revenue from ecommerce_view where event_type='purchase' group by day order by day ASC;
+
+--Check to see if the table is created
+
+show tables;
+
+--Step 2: Downlaod files
+
+hdfs dfs -ls ecommerce/one
+
+--View the contents of the file
+
+hdfs dfs -cat ecommerce/one/000000_0
+
+hdfs dfs -get ecommerce/two/000000_0 one.csv
+ls -al
+
+--Analysis 2:
+
+--Step1: Creating a table and running a query to get the total number of purchases by day and hour
+
+SELECT day, hour ,COUNT(event_type) AS total_sales, ROUND(SUM(price), 2) AS total_sales_revenue, COUNT(DISTINCT user_id) as total_unique_buyers FROM ecommerce_view WHERE event_type='purchase' GROUP BY day, hour ORDER BY day ASC, hour ASC;
+
+--Create a table using the above query and store the results in hdfs for visualization
+
+DROP TABLE IF EXISTS total_purchases_by_day_hour;
+
+CREATE TABLE total_purchases_by_day_hour
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE LOCATION '/user/fchen26/ecommerce/two'
+AS
+SELECT day, hour ,COUNT(event_type) AS total_sales, ROUND(SUM(price), 2) AS total_sales_revenue, COUNT(DISTINCT user_id) as total_unique_buyers FROM ecommerce_view WHERE event_type='purchase' GROUP BY day, hour ORDER BY day ASC, hour ASC;
+
+--Check to see if the table is created
+
+show tables;
+
+--Step 2: Downlaod files
+
+hdfs dfs -ls ecommerce/two
+
+--View the contents of the file
+
+hdfs dfs -cat ecommerce/two/000000_0
+
+hdfs dfs -get ecommerce/two/000000_0 two.csv
+ls -al
+
+--Analysis 3:
+
+--Step1: Creating a table and running a query to get the total number of active users by hour
+
+SELECT hour , COUNT(user_id) AS users_active FROM ecommerce_view GROUP BY hour ORDER BY hour ASC;
+
+--Create a table using the above query and store the results in hdfs for visualization
+
+DROP TABLE IF EXISTS active_users_by_hour;
+
+CREATE TABLE active_users_by_hour
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE LOCATION '/user/fchen26/ecommerce/three'
+AS
+SELECT hour , COUNT(user_id) AS users_active FROM ecommerce_view GROUP BY hour ORDER BY hour ASC;
+
+--Check to see if the table is created
+
+show tables;
+
+--Step 2: Downlaod files
+
+hdfs dfs -ls ecommerce/three
+
+--View the contents of the file
+
+hdfs dfs -cat ecommerce/three/000000_0
+
+hdfs dfs -get ecommerce/three/000000_0 three.csv
+ls -al
+
+--Analysis 4:
+
+--Step1: Creating a table and running a query to get the most viewed product categories
+
+SELECT primary_category, COUNT(event_type) AS total_views  FROM ecommerce_view WHERE event_type = 'view' GROUP BY primary_category ORDER BY total_views DESC;
+
+--Create a table using the above query and store the results in hdfs for visualization
+
+DROP TABLE IF EXISTS most_viewed_categories;
+
+CREATE TABLE most_viewed_categories
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE LOCATION '/user/fchen26/ecommerce/four'
+AS
+SELECT primary_category, COUNT(event_type) AS total_views  FROM ecommerce_view WHERE event_type = 'view' GROUP BY primary_category ORDER BY total_views DESC;
+
+--Check to see if the table is created
+
+show tables;
+
+--Step 2: Downlaod files
+
+hdfs dfs -ls ecommerce/four
+
+--View the contents of the file
+
+hdfs dfs -cat ecommerce/four/000000_0
+
+hdfs dfs -get ecommerce/four/000000_0 four.csv
+ls -al
+
+--Analysis 5:
+
+--Step1: Creating a table and running a query to get the percentage of each event
+
+--Get the total count of all event types
+SELECT count(event_type) FROM ecommerce_view;
+
+--SELECT event_type,count(event_type) AS number_of_events, ROUND(CAST(COUNT(event_type) AS float)/26560622, 2) AS percentage FROM ecommerce_view GROUP BY event_type ORDER BY percentage DESC;
+
+--Create a table using the above query and store the results in hdfs for visualization
+
+DROP TABLE IF EXISTS percentage_events;
+
+CREATE TABLE percentage_events
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE LOCATION '/user/fchen26/ecommerce/five'
+AS
+SELECT event_type,count(event_type) AS number_of_events, ROUND(CAST(COUNT(event_type) AS float)/26560622, 2) AS percentage FROM ecommerce_view GROUP BY event_type ORDER BY percentage DESC;
+
+--Check to see if the table is created
+
+show tables;
+
+--Step 2: Downlaod files
+
+hdfs dfs -ls ecommerce/five
+
+--View the contents of the file
+
+hdfs dfs -cat ecommerce/five/000000_0
+
+hdfs dfs -get ecommerce/five/000000_0 five.csv
+ls -al
+
+--Analysis 6:
+
+--Step1: Creating a table and running a query to get the top 100 primary category, brand and total sales by product category and brand
+
+SELECT primary_category, brand, COUNT(event_type) as total_sales FROM ecommerce_view WHERE primary_category IN('electronics', 'appliances', 'computers') AND event_type ='purchase' GROUP BY primary_category, brand ORDER BY total_sales DESC LIMIT 100;
+
+--Create a table using the above query and store the results in hdfs for visualization
+
+DROP TABLE IF EXISTS top_primary_categories;
+
+CREATE TABLE top_primary_categories
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE LOCATION '/user/fchen26/ecommerce/six'
+AS
+SELECT primary_category, brand, COUNT(event_type) as total_sales FROM ecommerce_view WHERE primary_category IN('electronics', 'appliances', 'computers') AND event_type ='purchase' GROUP BY primary_category, brand ORDER BY total_sales DESC LIMIT 100;
+
+--Check to see if the table is created
+
+show tables;
+
+--Step 2: Downlaod files
+
+hdfs dfs -ls ecommerce/six
+
+--View the contents of the file
+
+hdfs dfs -cat ecommerce/six/000000_0
+
+hdfs dfs -get ecommerce/six/000000_0 six.csv
+ls -al
