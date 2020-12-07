@@ -313,3 +313,34 @@ hdfs dfs -cat ecommerce/six/000000_0
 
 hdfs dfs -get ecommerce/six/000000_0 six.csv
 ls -al
+
+--Analysis 7:
+
+--Step1: Creating a table and running a query to get the top 10 users who purchased more than once
+
+SELECT COUNT(user_id) as number_of_purchased,user_id FROM ecommerce_view WHERE event_type ='purchase' GROUP BY user_id HAVING number_of_purchased>1 ORDER BY number_of_purchased DESC limit 10;
+
+--Create a table using the above query and store the results in hdfs for visualization
+
+DROP TABLE IF EXISTS top_users_most_purchased;
+
+CREATE TABLE top_users_most_purchased
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE LOCATION '/user/fchen26/ecommerce/seven'
+AS
+SELECT COUNT(user_id) as number_of_purchased,user_id FROM ecommerce_view WHERE event_type ='purchase' GROUP BY user_id HAVING number_of_purchased>1 ORDER BY number_of_purchased DESC limit 10;
+
+--Check to see if the table is created
+
+show tables;
+
+--Step 2: Downlaod files
+
+hdfs dfs -ls ecommerce/seven
+
+--View the contents of the file
+
+hdfs dfs -cat ecommerce/seven/000000_0
+
+hdfs dfs -get ecommerce/seven/000000_0 seven.csv
+ls -al
