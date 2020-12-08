@@ -6,5 +6,4 @@ Team members - Group 3: Taya Stewart, Raymond Delgado, Navaneeth Visagan, Frank 
 
 Advisor: Dr. Jongwook Woo
 
-College of Business and Economics
-California State University, Los Angeles
+College of Business and Economics, California State University, Los Angeles
