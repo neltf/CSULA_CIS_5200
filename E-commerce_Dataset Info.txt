@@ -1,0 +1,10 @@
+--CSULA CIS5200 Term Project Dataset Link- Group Three
+--E-commerce User Behaviours Analysis
+
+-------------------------------------------------------------
+
+https://www.kaggle.com/mkechinov/ecommerce-behavior-data-from-multi-category-store
+
+The file contains behavior data for a one month (Oct 2019) from a large multi-category online store.
+
+Used Dataset URL: https://www.kaggle.com/mkechinov/ecommerce-behavior-data-from-multi-category-store?select=2019-Oct.csv
