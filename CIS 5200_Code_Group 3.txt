@@ -90,6 +90,26 @@ SELECT * FROM ecommerce limit 10;
 
 DESCRIBE ecommerce;
 
+--Create table to hold the information regarding the days of the week
+
+DROP TABLE IF EXISTS  week_days;
+
+--create the week_days table on comma-separated data
+
+CREATE TABLE IF NOT EXISTS week_days (week_day_name STRING, week_day_num STRING)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ',';
+INSERT INTO TABLE week_days
+VALUES ('Monday', '1'), ('Tuesday', '2'), ('Wednesday', '3'), ('Thursday', '4'), ('Friday', '5'), ('Saturday','6'),('Sunday','7');
+
+--Review the content of the week_days table to see if it has the correct data and values
+
+SELECT * FROM week_days;
+
+--Review table headers
+
+DESCRIBE week_days;
+
 --Create a view to store data from previously created table with conditions
  
 DROP VIEW IF EXISTS ecommerce_view;
@@ -97,6 +117,7 @@ DROP VIEW IF EXISTS ecommerce_view;
 CREATE VIEW IF NOT EXISTS ecommerce_view AS 
 SELECT 
 event_time,
+date_format(event_time, 'u') as week_day_num,
 day(event_time) as day,
 hour(event_time) as hour,
 unix_timestamp(event_time) as event_time_in_seconds,
@@ -158,7 +179,9 @@ ls -al
 
 --Open Open another terminal with git bash, minty, or putty to import the output file into your PC/laptop
 
-The below is done by psftp method:
+scp fchen26@ipaddress:/home/fchen26/one.csv one.csv
+
+--or by psftp method:
 
 Open [ipadddress]
 
@@ -200,7 +223,9 @@ ls -al
 
 --Open Open another terminal with git bash, minty, or putty to import the output file into your PC/laptop
 
-The below is done by psftp method:
+scp fchen26@ipaddress:/home/fchen26/two.csv two.csv
+
+--or by psftp method:
 
 Open [ipadddress]
 
@@ -242,7 +267,9 @@ ls -al
 
 --Open Open another terminal with git bash, minty, or putty to import the output file into your PC/laptop
 
-The below is done by psftp method:
+scp fchen26@ipaddress:/home/fchen26/three.csv three.csv
+
+--or by psftp method:
 
 Open [ipadddress]
 
@@ -284,7 +311,9 @@ ls -al
 
 --Open Open another terminal with git bash, minty, or putty to import the output file into your PC/laptop
 
-The below is done by psftp method:
+scp fchen26@ipaddress:/home/fchen26/four.csv four.csv
+
+--or by psftp method:
 
 Open [ipadddress]
 
@@ -329,7 +358,9 @@ ls -al
 
 --Open Open another terminal with git bash, minty, or putty to import the output file into your PC/laptop
 
-The below is done by psftp method:
+scp fchen26@ipaddress:/home/fchen26/five.csv five.csv
+
+--or by psftp method:
 
 Open [ipadddress]
 
@@ -371,7 +402,9 @@ ls -al
 
 --Open Open another terminal with git bash, minty, or putty to import the output file into your PC/laptop
 
-The below is done by psftp method:
+scp fchen26@ipaddress:/home/fchen26/six.csv six.csv
+
+--or by psftp method:
 
 Open [ipadddress]
 
@@ -413,10 +446,60 @@ ls -al
 
 --Open Open another terminal with git bash, minty, or putty to import the output file into your PC/laptop
 
-The below is done by psftp method:
+scp fchen26@ipaddress:/home/fchen26/seven.csv seven.csv
+
+--ore by psftp method:
 
 Open [ipadddress]
 
 ls
 
 get seven.csv
+
+
+--Analysis 8:
+
+--Step1: Creating a table and running a query to get the  total number of active users by weekday
+
+SELECT week_days.week_day_name as week_day , COUNT(ecommerce_view.user_id) AS users_active FROM ecommerce_view JOIN week_days ON (ecommerce_view.week_day_num = week_days.week_day_num) GROUP BY week_day_name;
+
+--Create a table using the above query and store the results in hdfs for visualization
+
+DROP TABLE IF EXISTS top_users_most_purchased;
+
+CREATE TABLE active_users_by_weekday
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ','
+STORED AS TEXTFILE LOCATION '/user/fchen26/ecommerce/eight'
+AS
+SELECT week_days.week_day_name as week_day , COUNT(ecommerce_view.user_id) AS users_active FROM ecommerce_view JOIN week_days ON (ecommerce_view.week_day_num = week_days.week_day_num) GROUP BY week_day_name;
+
+--Check to see if the table is created
+
+show tables;
+
+--Step 2: Downlaod files
+
+hdfs dfs -ls ecommerce/eight
+
+--This is the merge command to merge the 47 files into a single file
+
+hadoop fs -cat /user/fchen26/ecommerce/eight/* | hadoop fs -put - /user/fchen26/ecommerce/eight/000046_1
+
+--View the contents of the file
+
+hdfs dfs -cat ecommerce/eight/000046_1
+
+hdfs dfs -get ecommerce/eight/000046_1 eight.csv
+ls -al
+
+--Open Open another terminal with git bash, minty, or putty to import the output file into your PC/laptop
+
+scp fchen26@ipaddress:/home/fchen26/eight.csv eight.csv
+
+--ore by psftp method:
+
+Open [ipadddress]
+
+ls
+
+get eight.csv
