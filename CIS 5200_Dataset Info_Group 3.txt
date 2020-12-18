@@ -1,4 +1,4 @@
---CSULA CIS5200 Term Project Dataset Link- Group Three
+--CSULA CIS5200 Term Project Data source Link- Group Three
 --E-commerce User Behavior Analysis
 
 -------------------------------------------------------------
